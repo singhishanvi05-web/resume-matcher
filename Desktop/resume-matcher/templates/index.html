@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Resume Matcher</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0a0a;--surface:#111111;--border:#222222;
+    --text:#e8e8e8;--muted:#555555;
+    --green:#00e676;--red:#ff5252;--blue:#448aff;--yellow:#ffd740;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+  header{border-bottom:1px solid var(--border);padding:1.5rem 2.5rem;display:flex;align-items:center;justify-content:space-between;}
+  .logo{font-size:1.1rem;font-weight:800;letter-spacing:0.05em;}
+  .logo span{color:var(--green);}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;padding:4px 10px;border:1px solid var(--border);border-radius:2px;color:var(--muted);}
+  .hero{padding:4rem 2.5rem 2rem;max-width:900px;}
+  .hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:800;line-height:1.1;letter-spacing:-0.02em;}
+  .hero h1 em{font-style:normal;color:var(--green);}
+  .hero p{margin-top:1rem;font-size:1rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .pipeline{display:flex;gap:0;padding:0 2.5rem;margin:2rem 0;overflow-x:auto;}
+  .pipe-node{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;padding:6px 14px;border:1px solid var(--border);color:var(--muted);white-space:nowrap;border-right:none;transition:all 0.3s;}
+  .pipe-node:last-child{border-right:1px solid var(--border);}
+  .pipe-node.active{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.05);}
+  .inputs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin:0 2.5rem;}
+  @media(max-width:680px){.inputs{grid-template-columns:1fr;}}
+  .input-block{background:var(--surface);padding:1.5rem;}
+  .input-block label{display:block;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:0.75rem;}
+  .input-block textarea{width:100%;height:220px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;line-height:1.7;padding:1rem;resize:vertical;outline:none;transition:border-color 0.2s;}
+  .input-block textarea:focus{border-color:var(--green);}
+  .input-block textarea::placeholder{color:var(--muted);}
+  .run-wrap{padding:1.5rem 2.5rem;display:flex;align-items:center;gap:1rem;}
+  #run-btn{font-family:'Syne',sans-serif;font-weight:600;font-size:0.9rem;padding:12px 32px;background:var(--green);color:#000;border:none;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.2s,transform 0.1s;}
+  #run-btn:hover{opacity:0.85;}
+  #run-btn:active{transform:scale(0.98);}
+  #run-btn:disabled{opacity:0.35;cursor:not-allowed;}
+  #status-msg{font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--muted);}
+  .error-box{margin:0 2.5rem 1rem;padding:12px 16px;border:1px solid var(--red);color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:0.8rem;}
+  #results{display:none;padding:0 2.5rem 4rem;}
+  .score-banner{display:flex;align-items:baseline;gap:1rem;padding:2.5rem 0 1.5rem;border-bottom:1px solid var(--border);margin-bottom:2rem;}
+  .score-number{font-size:clamp(3rem,8vw,6rem);font-weight:800;line-height:1;letter-spacing:-0.03em;}
+  .score-number.green{color:var(--green);}
+  .score-number.yellow{color:var(--yellow);}
+  .score-number.red{color:var(--red);}
+  .score-label{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--muted);}
+  .score-bar-wrap{flex:1;padding-bottom:4px;}
+  .score-bar-track{height:4px;background:var(--border);width:100%;border-radius:2px;overflow:hidden;}
+  .score-bar-fill{height:100%;border-radius:2px;width:0%;transition:width 1.2s cubic-bezier(0.16,1,0.3,1);}
+  .score-bar-fill.green{background:var(--green);}
+  .score-bar-fill.yellow{background:var(--yellow);}
+  .score-bar-fill.red{background:var(--red);}
+  .results-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--border);}
+  .result-card{background:var(--surface);padding:1.5rem;}
+  .result-card h3{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+  .result-card h3::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;}
+  .card-matched h3::before{background:var(--green);}
+  .card-missing h3::before{background:var(--red);}
+  .card-bonus h3::before{background:var(--blue);}
+  .card-keywords h3::before{background:var(--yellow);}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;padding:4px 10px;border:1px solid;border-radius:2px;animation:fadeUp 0.4s ease both;}
+  .tag-green{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.06);}
+  .tag-red{border-color:var(--red);color:var(--red);background:rgba(255,82,82,0.06);}
+  .tag-blue{border-color:var(--blue);color:var(--blue);background:rgba(68,138,255,0.06);}
+  .tag-yellow{border-color:var(--yellow);color:var(--yellow);background:rgba(255,215,64,0.06);}
+  .tag-empty{color:var(--muted);border-color:var(--border);font-style:italic;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">resume<span>.</span>match</div>
+  <div class="badge">NLP · spaCy · TF-IDF · sklearn</div>
+</header>
+<div class="hero">
+  <h1>Match your resume<br/>to any <em>job description.</em></h1>
+  <p>// tokenize → stopwords → NER → TF-IDF → skill match</p>
+</div>
+<div class="pipeline">
+  <div class="pipe-node" id="p-tok">01 tokenization</div>
+  <div class="pipe-node" id="p-stop">02 stopword removal</div>
+  <div class="pipe-node" id="p-ner">03 NER</div>
+  <div class="pipe-node" id="p-tfidf">04 TF-IDF</div>
+  <div class="pipe-node" id="p-match">05 skill match</div>
+</div>
+<div class="inputs">
+  <div class="input-block">
+    <label>Your resume</label>
+    <textarea id="resume-input" placeholder="Paste your resume text here..."></textarea>
+  </div>
+  <div class="input-block">
+    <label>Job description</label>
+    <textarea id="jd-input" placeholder="Paste the job description here..."></textarea>
+  </div>
+</div>
+<div class="run-wrap">
+  <button id="run-btn" onclick="runAnalysis()">Analyze Match →</button>
+  <span id="status-msg"></span>
+</div>
+<div id="error-area"></div>
+<div id="results">
+  <div class="score-banner">
+    <div>
+      <div class="score-number" id="score-number">0%</div>
+      <div class="score-label">overall match score</div>
+    </div>
+    <div class="score-bar-wrap">
+      <div class="score-bar-track">
+        <div class="score-bar-fill" id="score-bar"></div>
+      </div>
+    </div>
+  </div>
+  <div class="results-grid">
+    <div class="result-card card-matched"><h3>Matched skills</h3><div class="tags" id="matched-tags"></div></div>
+    <div class="result-card card-missing"><h3>Missing skills</h3><div class="tags" id="missing-tags"></div></div>
+    <div class="result-card card-bonus"><h3>Bonus skills</h3><div class="tags" id="bonus-tags"></div></div>
+    <div class="result-card card-keywords"><h3>Top JD keywords</h3><div class="tags" id="keyword-tags"></div></div>
+  </div>
+</div>
+<script>
+  const pipeSteps=['p-tok','p-stop','p-ner','p-tfidf','p-match'];
+  function setPipe(i){pipeSteps.forEach((id,j)=>document.getElementById(id).classList.toggle('active',j<=i));}
+  function makeTags(id,items,cls,empty){
+    const el=document.getElementById(id);
+    if(!items.length){el.innerHTML=`<span class="tag tag-empty">${empty}</span>`;return;}
+    el.innerHTML=items.map((s,i)=>`<span class="tag ${cls}" style="animation-delay:${i*0.05}s">${s}</span>`).join('');
+  }
+  function getColor(p){return p>=65?'green':p>=35?'yellow':'red';}
+  async function runAnalysis(){
+    const resume=document.getElementById('resume-input').value.trim();
+    const jd=document.getElementById('jd-input').value.trim();
+    const errArea=document.getElementById('error-area');
+    errArea.innerHTML='';
+    if(!resume||!jd){errArea.innerHTML='<div class="error-box">Both fields are required.</div>';return;}
+    const btn=document.getElementById('run-btn');
+    const msg=document.getElementById('status-msg');
+    btn.disabled=true;
+    document.getElementById('results').style.display='none';
+    const stages=[[0,'tokenizing...'],[1,'removing stopwords...'],[2,'running NER...'],[3,'computing TF-IDF...'],[4,'matching skills...']];
+    let si=0;
+    const iv=setInterval(()=>{if(si<stages.length){setPipe(stages[si][0]);msg.textContent=stages[si][1];si++;}},400);
+    try{
+      const res=await fetch('/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resume,jd})});
+      const data=await res.json();
+      clearInterval(iv);
+      if(data.error){errArea.innerHTML=`<div class="error-box">${data.error}</div>`;msg.textContent='';btn.disabled=false;return;}
+      setPipe(4);msg.textContent='done.';
+      const pct=data.match_pct;
+      const col=getColor(pct);
+      const sn=document.getElementById('score-number');
+      sn.textContent=pct+'%';sn.className='score-number '+col;
+      const bar=document.getElementById('score-bar');
+      bar.className='score-bar-fill '+col;
+      setTimeout(()=>bar.style.width=pct+'%',50);
+      makeTags('matched-tags',data.matched_skills,'tag-green','none found');
+      makeTags('missing-tags',data.missing_skills,'tag-red','none — great job!');
+      makeTags('bonus-tags',data.bonus_skills,'tag-blue','none found');
+      makeTags('keyword-tags',data.jd_keywords,'tag-yellow','none found');
+      document.getElementById('results').style.display='block';
+    }catch(e){
+      clearInterval(iv);
+      errArea.innerHTML='<div class="error-box">Could not connect to server. Is Flask running?</div>';
+      msg.textContent='';
+    }
+    btn.disabled=false;
+  }
+</script>
+</body>
+</html>
